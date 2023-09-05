@@ -24,8 +24,9 @@ def getDistances(obs, well, sim_path, para_ens):
     distances = None 
     for attribute in attributes_sets[well]: 
         dates, values = getTimeAttriVal_mdf_sim(sim95, attribute, well, para_ens) 
-        matchedData = matchTime(obs95, attribute, dates, values)  # a dataframe with columns: matched_dates_tr (truncated to month), obs_dates, obs_{attribute}, sim_dates, sim_{attribute}
-        matchedData[attribute] = matchedData[f'obs_{attribute}'] - matchedData['sim_{attribute}']
+        # a dataframe with columns: matched_dates_tr (truncated to month), obs_dates, obs_{attribute}, sim_dates, sim_{attribute}
+        matchedData = matchTime(obs95, attribute, dates, values)  
+        matchedData[attribute] = matchedData[f'obs_{attribute}'] - matchedData[f'sim_{attribute}']
         
         # update the distances dataframe 
         data = matchedData[['obs_dates', attribute]]
@@ -33,7 +34,7 @@ def getDistances(obs, well, sim_path, para_ens):
         else: distances.merge(data, on='obs_dates', how='outer')
     
     distances.drop(columns=['obs_dates'], inplace=True)
-    distances = distances[attributes_sets[well]]
+    distances = distances[attributes_sets[well]] # make sure the column order
     
     return distance
 
@@ -52,17 +53,19 @@ def variance_optimizer(obs95, obs110, sim_path, para_ens):
     Ts_100 = obs110[attributes_110].count()
 
     # define the log-likelihood 
-    def loglik(sigmas):
-        sig1, sig2, sig3, sig4, sig5, sig6, sig7 = sigmas
-        sigs_95  = [sig1, sig2, sig3, sig4]
-        sigs_110 = [sig5, sig6, sig7]
-        term1 = np.sum(np.array(Ts_95)*np.log(sigs_95)) + np.sum(np.array(Ts_110)*np.log(sigs_110)) 
-        term2 = 0.5*( np.sum(np.nansum(np.square(distances95), axis=0)/np.square(sigs_95))
-                    + np.sum(np.nansum(np.square(distances110), axis=0)/np.square(sigs_110)) )
+    def loglik(var_s):
+        var1, var2, var3, var4, var5, var6, var7 = var_s
+        vars_95  = [var1, var2, var3, var4]
+        vars_110 = [var5, var6, var7]
+        term1 = np.sum(np.array(Ts_95)*np.log(vars_95)) + np.sum(np.array(Ts_110)*np.log(vars_110)) 
+        term2 = np.sum(np.nansum(np.square(distances95), axis=0)/np.array(vars_95))
+                + np.sum(np.nansum(np.square(distances110), axis=0)/np.array(vars_110)) 
+        # omit the term of sqrt(2*pi) and a factor of 0.5
         return term1 + term2
 
     x0 = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    res = minimize(loglik, x0)
+    bnds = ((0, None), (0, None), (0, None), (0, None), (0, None), (0, None), (0, None))
+    res = minimize(loglik, x0, bounds=bnds)
     if not res.success:
         print(f'sim{fnum}')
         print(res.message)
