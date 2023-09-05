@@ -63,7 +63,7 @@ def modify_df_sim(df, well):
     df['variable'] = df['variable'].copy().str.lstrip()
     df = df[df['variable'].isin(var_map_sim.keys())]
     
-    # make conversions
+    # make time conversions
     df['time'] = df['time'] - ref_1955
     df['time'] = df['time'].apply(timeStamp2datetime)
     df['time'] = pd.to_datetime(df['time'])
@@ -85,19 +85,18 @@ def getTimeAttriVal_mdf_sim(mdf_sim, attribute, well, para_ens):
         values = values*para_ens.loc[fnum - 1, [f'bias_{well}_{attribute}']]
     return (dates, values)
 
-def matchData(obs, dates_sim, vals_sim, attribute):
+def matchData(obs, attribute, dates_sim, vals_sim):
 
-    # record observation dates
-    OBSERVATION_DATES = set()
-    y = obs[~obs[attribute].isna(), ["COLLECTION_DATE"]].dt.year
-    m = obs[~obs[attribute].isna(), ["COLLECTION_DATE"]].dt.month
-    for y, m in zip(y, m):
-        OBSERVATION_DATES.add((y, m))
+    obs = obs[['COLLECTION_DATE', attribute.lower()]]
+    obs.columns = ['obs_dates', 'obs_vals']
+    obs['dates_tr'] = sim['obs_dates'].dt.to_period('M').dt.to_timestamp()
 
-    # matched the simulated data 'on' the observation dates 
-    observed = [(True if (date_sim.dt.year, date_sim.dt.month) in OBSERVATION_DATES else False) for date_sim in dates_sim] 
-    dates_matched  = np.array(dates_sim)[observed] 
-    values_matched = np.array(vals_sim)[observed]
+    sim = pd.concat([dates_sim, vals_sim])
+    sim.columns = ['sim_dates', 'sim_vals']
+    sim['dates_tr'] = sim['sim_dates'].dt.to_period('M').dt.to_timestamp()
 
-    return (dates_matched, vals_matched)
+    matchedData = obs.merge(sim, on='dates_tr', how='left')
+    matchedData = matchedData.rename(columns={'dates_tr': 'matched_dates_tr'})
+    
+    return matchedData
 

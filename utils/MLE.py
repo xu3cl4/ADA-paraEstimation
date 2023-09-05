@@ -22,20 +22,20 @@ def getDistances(obs95, obs110, sim_path, para_ens):
     distances95 = [] 
     for attribute in attributes_95: 
         dates, values = getTimeAttriVal_mdf_sim(sim95, attribute, well, para_ens) 
-        _ , values_matched = matchTime(obs95, dates, values, attribute)
-        data = { dates: obs95.loc[~obs95[attribute].isna(), ['COLLECTION_DATE']], 
-                 dists: obs95[attribute] - values_matched }
-        distances95.append(pd.DataFrame(data))
+        matchedData = matchTime(obs95, attribute, dates, values)  # a dataframe with columns: matched_dates_tr (truncated to month), obs_dates, sim_dates, obs_vals, sim_vals
+        matchedData['dist'] = matchedData['obs_vals'] - matchedData['sim_vals']
+        distances95.append(matchedData[['obs_dates', 'dist']])
     distances95 = pd.concat(distances95, join='outer')
+    distances95.drop(columns=['obs_dates'], inplace=True)
     
     distances110 = []
     for attribute in attributes_110:
         dates, values = getTimeAttriVal_mdf_sim(sim110,attribute, well, para_ens)
-        _ , values_matched = matchData(obs110, dates, value, attribute)
-        data = { dates: obs110.loc[~obs110[attribute].isna(), ['COLLECTION_DATE']], 
-                 dists: obs110[attribute] - values_matched }
-        distances110.append(pd.DataFrame(data))
+        matchedData = matchTime(obs110, attribute, dates, values) # a dataframe with columns: matched_dates_tr (truncated to month), obs_dates, sim_dates, obs_vals, sim_vals
+        matchedData['dist'] = matchedData['obs_vals'] - matchedData['sim_vals']
+        distances110.append(matchedData[['obs_dates', 'dist']])
     distances110 = pd.concat(distance110, join='outer')
+    distances110.drop(columns=['obs_dates'], inplace=True)
 
     return (distances95, distances110)
 
