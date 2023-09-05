@@ -3,12 +3,12 @@ from argparse       import ArgumentParser, RawTextHelpFormatter as RT
 from joblib         import delayed, Parallel
 from pathlib        import Path
 
-import numpy             as np
-import pandas            as pd
+import numpy  as np
+import pandas as pd
 
 # import from personal modules 
 from utils.dfModifier import modify_df_real
-from utils.MLE        import variance_optimizer
+from utils.MLE        import attributes_95, attributes_110, variance_optimizer
 
 FPATH = Path(__file__)
 DIR = FPATH.parent
@@ -47,7 +47,13 @@ def main():
     real95 = modify_df_real(real95)
 
     real110 = pd.read_csv(real110)
-    real110 = pd.read_csv(real110)
+    real110 = modify_df_real(real110)
+    
+    print('---- number of observations ---- ')
+    print('Well 95:')
+    print(real95[attributes_95].count())
+    print('Well 110:')
+    print(real110[attributes_110].count())
 
     # read the parameter ensemble 
     para = pd.read_csv(para) 

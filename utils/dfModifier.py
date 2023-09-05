@@ -1,5 +1,8 @@
+# import from the built-in modules 
+
 from datetime import date, datetime
 
+import numpy  as np
 import pandas as pd
 
 ref_1955 = 6.16635504e+10
@@ -18,6 +21,7 @@ points = {
         110: ["point" + str(num) for num in range(35, 43)]
         }
 '''
+
 var_map_sim = {
             'water table': 'depth to water', 
             'Tritium aqueous concentration': 'tritium', 
@@ -69,3 +73,31 @@ def modify_df_sim(df, well):
     df = df[(df['time'].dt.year >= 1985) & (df['time'].dt.year <= 2025)]
     
     return df 
+
+def getTimeAttriVal_mdf_sim(mdf_sim, attribute, well, para_ens):
+
+    sim_attr = mdf_sim[mdf_sim['variable'] == attribute]
+    sim_attr = sim_attr.pivot(index="time", columns="region", values="value")
+    sim_attr_avg = sim_attr.mean(axis=1)        # average over the chosen depths
+    dates = (sim_attr_avg.index).to_series()
+    values = (sim_attr_avg.to_frame())[0]
+    if para_ens is not None:                    # multiply by a bias factor
+        values = values*para_ens.loc[fnum - 1, [f'bias_{well}_{attribute}']]
+    return (dates, values)
+
+def matchData(obs, dates_sim, vals_sim, attribute):
+
+    # record observation dates
+    OBSERVATION_DATES = set()
+    y = obs[~obs[attribute].isna(), ["COLLECTION_DATE"]].dt.year
+    m = obs[~obs[attribute].isna(), ["COLLECTION_DATE"]].dt.month
+    for y, m in zip(y, m):
+        OBSERVATION_DATES.add((y, m))
+
+    # matched the simulated data 'on' the observation dates 
+    observed = [(True if (date_sim.dt.year, date_sim.dt.month) in OBSERVATION_DATES else False) for date_sim in dates_sim] 
+    dates_matched  = np.array(dates_sim)[observed] 
+    values_matched = np.array(vals_sim)[observed]
+
+    return (dates_matched, vals_matched)
+
