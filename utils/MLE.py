@@ -10,34 +10,32 @@ from .dfModifier import getTimeAttriVal_mdf_sim, matchData, modify_df_sim
 # variables of interest
 attributes_95 = ['Tritium', 'Uranium', 'Aluminum', 'pH']
 attributes_110 = ['Tritium', 'Uranium', 'pH']
+attributes_sets = {95: attributes_95, 110: attributes_110}
 
-def getDistances(obs95, obs110, sim_path, para_ens):
+def getDistances(obs, well, sim_path, para_ens):
+    ''' get distances between the observations and  simulated data (each column is for an observation)
+        the order of columns follow the one in attributes_setsi '''
    
     # modify the simulated data     
     sim    = pd.read_csv(sim_path, skiprows=2)
-    sim95  = modify_df_sim(sim, 95)    
-    sim110 = modify_df_sim(sim, 110)
+    sim  = modify_df_sim(sim, well)    
 
     # calculate the distance between observation and simulated data
-    distances95 = [] 
-    for attribute in attributes_95: 
+    distances = None 
+    for attribute in attributes_sets[well]: 
         dates, values = getTimeAttriVal_mdf_sim(sim95, attribute, well, para_ens) 
-        matchedData = matchTime(obs95, attribute, dates, values)  # a dataframe with columns: matched_dates_tr (truncated to month), obs_dates, sim_dates, obs_vals, sim_vals
-        matchedData['dist'] = matchedData['obs_vals'] - matchedData['sim_vals']
-        distances95.append(matchedData[['obs_dates', 'dist']])
-    distances95 = pd.concat(distances95, join='outer')
-    distances95.drop(columns=['obs_dates'], inplace=True)
+        matchedData = matchTime(obs95, attribute, dates, values)  # a dataframe with columns: matched_dates_tr (truncated to month), obs_dates, obs_{attribute}, sim_dates, sim_{attribute}
+        matchedData[attribute] = matchedData[f'obs_{attribute}'] - matchedData['sim_{attribute}']
+        
+        # update the distances dataframe 
+        data = matchedData[['obs_dates', attribute]]
+        if distances is None: distances = data
+        else: distances.merge(data, on='obs_dates', how='outer')
     
-    distances110 = []
-    for attribute in attributes_110:
-        dates, values = getTimeAttriVal_mdf_sim(sim110,attribute, well, para_ens)
-        matchedData = matchTime(obs110, attribute, dates, values) # a dataframe with columns: matched_dates_tr (truncated to month), obs_dates, sim_dates, obs_vals, sim_vals
-        matchedData['dist'] = matchedData['obs_vals'] - matchedData['sim_vals']
-        distances110.append(matchedData[['obs_dates', 'dist']])
-    distances110 = pd.concat(distance110, join='outer')
-    distances110.drop(columns=['obs_dates'], inplace=True)
-
-    return (distances95, distances110)
+    distances.drop(columns=['obs_dates'], inplace=True)
+    distances = distances[attributes_sets[well]]
+    
+    return distance
 
 def variance_optimizer(obs95, obs110, sim_path, para_ens):
     
@@ -45,7 +43,8 @@ def variance_optimizer(obs95, obs110, sim_path, para_ens):
 
     # get distances (each column is for an observation) 
     # the order of columns follow the one in attributes_sets
-    distances95, distances110 = getDistances(obs95, obs110, sim_path, para_ens)
+    distances95  = getDistances(obs95,  95, sim_path, para_ens)
+    distances110 = getDistances(obs110, 110, sim_path, para_ens)
    
     # calculate T_i's: the number of certain observations at certain well 
     # the order of columns follow the one in attributes_sets

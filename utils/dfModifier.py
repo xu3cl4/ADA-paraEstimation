@@ -88,11 +88,11 @@ def getTimeAttriVal_mdf_sim(mdf_sim, attribute, well, para_ens):
 def matchData(obs, attribute, dates_sim, vals_sim):
 
     obs = obs[['COLLECTION_DATE', attribute.lower()]]
-    obs.columns = ['obs_dates', 'obs_vals']
+    obs.columns = ['obs_dates', f'obs_{attribute}']
     obs['dates_tr'] = sim['obs_dates'].dt.to_period('M').dt.to_timestamp()
 
     sim = pd.concat([dates_sim, vals_sim])
-    sim.columns = ['sim_dates', 'sim_vals']
+    sim.columns = ['sim_dates', f'sim_{attribute}']
     sim['dates_tr'] = sim['sim_dates'].dt.to_period('M').dt.to_timestamp()
 
     matchedData = obs.merge(sim, on='dates_tr', how='left')
