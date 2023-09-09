@@ -74,18 +74,17 @@ def modify_df_sim(df, well):
     
     return df 
 
-def getTimeAttriVal_mdf_sim(mdf_sim, attribute, well, para_ens):
+def getTimeAttriVal_mdf_sim(mdf_sim, attribute, bias_factor=1):
 
     sim_attr = mdf_sim[mdf_sim['variable'] == attribute]
     sim_attr = sim_attr.pivot(index="time", columns="region", values="value")
     sim_attr_avg = sim_attr.mean(axis=1)        # average over the chosen depths
     dates = (sim_attr_avg.index).to_series()
     values = (sim_attr_avg.to_frame())[0]
-    if para_ens is not None:                    # multiply by a bias factor
-        values = values*para_ens.loc[fnum - 1, [f'bias_{well}_{attribute}']]
+    values = values*bias
     return (dates, values)
 
-def matchData(obs, attribute, dates_sim, vals_sim):
+def matchTime(obs, attribute, dates_sim, vals_sim):
 
     obs = obs[['COLLECTION_DATE', attribute.lower()]]
     obs.columns = ['obs_dates', f'obs_{attribute}']

@@ -7,6 +7,7 @@ import numpy  as np
 import pandas as pd
 
 # import from personal modules 
+from utils.extract    import getBiasFactors
 from utils.dfModifier import modify_df_real
 from utils.MLE        import attributes_95, attributes_110, variance_optimizer
 
@@ -28,7 +29,8 @@ def getArguments():
     parser.add_argument('real110', type = str, help="the file path to the real observations at well 110")
     parser.add_argument('para',    type = str, help="the file path to .csv file of parameter ensemeble")
     parser.add_argument('dir_sim', type = str, help="the directory to the simulated results from the parameter ensemble")
-    parser.add_argument('opt',     type = str, help="the file path to output the estimation results")
+    parser.add_argument('dir_log', type = str, help="the directory to the .log/.out files of the simulations")
+    parser.add_argument('opt',     type = str, help="the file path to output the estimation results (.csv file)")
 
     return parser.parse_args()
 
@@ -40,6 +42,7 @@ def main():
     real110 = DIR.joinpath(args.real110)
     para    = DIR.joinpath(args.para)
     dir_sim = DIR.joinpath(args.dir_sim)
+    dir_log = DIR.joinpath(args.dir_log)
     opt     = DIR.joinpath(args.opt)
 
     # read files of real observations  
@@ -66,7 +69,7 @@ def main():
     n = len(list(sims))
     r = Parallel(n_jobs=nc, verbose=1, backend="multiprocessing")\
             (delayed(variance_optimizer)(
-                    obs95=real95, obs110=real110, sim_path=sim, para_ens=para
+                    obs95=real95, obs110=real110, sim_path=sim, dir_log=dir_log, bias_factors=getBiasFactors(sim, para)
                 )
             for sim in sims
         )
@@ -75,10 +78,13 @@ def main():
     idx_max = vals.index(max(vals))
     ens_num_max = ens_num[idx_max]
     para_MLE = para.iloc[ens_num_max]
-    print(para_MLE)
-    variance_MLE = variances[idx_max]
-    print(f'variance estimate: {variance_MLE}')
-        
+    variance_MLE = variances[idx_max]        # numpy array
+    estimate = pd.DataFrame([para_MLE])
+    for i, var in enumerate(variances): 
+        estimate[f'var{i+1}'] = var
+    print('---- MLE estimate ---- ')
+    print(esitmate)
+    estimate.to_csv(opt, index=False)
 
 if __name__ == "__main__":
     main()
